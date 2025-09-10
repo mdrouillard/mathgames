@@ -74,7 +74,7 @@
         </div>
 
         <!-- Welcome Screen and Instructions - No longer hidden by default -->
-        <div id="welcome-screen" class="bg-white p-6 md:p-8 rounded-2xl shadow-xl w-full max-w-md text-center">
+        <div id="welcome-screen" class="hidden bg-white p-6 md:p-8 rounded-2xl shadow-xl w-full max-w-md text-center">
             <h1 class="text-3xl font-bold mb-2">Welcome, Potion Master!</h1>
             <p class="text-purple-500 mb-6">Your first task is at hand. You must gather rare ingredients before they spoil!</p>
 
@@ -741,13 +741,14 @@
             
             loadingScreenEl.classList.add('hidden');
             // Show the welcome screen by default, unless a game is in progress
-            if (targetRecipe) {
+            if (targetRecipe && currentLevelIndex < shuffledLevels.length) {
                 welcomeScreenEl.classList.add('hidden');
                 gameScreenEl.classList.remove('hidden');
                 renderCollection();
                 updatePotionInfoUI();
                 generateProblem();
             } else {
+                // This is the new behavior: always show the welcome screen
                 welcomeScreenEl.classList.remove('hidden');
                 gameScreenEl.classList.add('hidden');
             }
