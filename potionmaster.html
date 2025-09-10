@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Potion Master</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            height: 100vh;
+        }
+        .collected-part {
+            transition: transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
+        }
+        .newly-collected {
+            transform: scale(1.1);
+            box-shadow: 0 0 20px rgba(124, 58, 237, 0.8);
+        }
+        .loading-dot {
+            animation: bounce 1s infinite;
+        }
+        .loading-dot:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+        .loading-dot:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+        @keyframes bounce {
+            0%, 100% {
+                transform: translateY(0);
+            }
+            50% {
+                transform: translateY(-5px);
+            }
+        }
+        /* Custom styles for the recipe list */
+        .ingredient-list li {
+            list-style: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 4px;
+        }
+        .ingredient-status {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+        .completed-ingredient {
+            background-color: #10B981;
+        }
+        .incomplete-ingredient {
+            background-color: #EF4444;
+        }
+    </style>
+</head>
+<body class="bg-purple-100 text-purple-900 overflow-y-auto">
+
+    <!-- Overall container to center content -->
+    <div id="game-container" class="min-h-screen flex flex-col items-center justify-center p-4">
+
+        <!-- Welcome Screen and Instructions -->
+        <div id="welcome-screen" class="bg-white p-6 md:p-8 rounded-2xl shadow-xl w-full max-w-md text-center">
+            <h1 class="text-3xl font-bold mb-2">Welcome, Potion Master!</h1>
+            <p class="text-purple-500 mb-6">Your first task is at hand. You must gather rare ingredients before they spoil!</p>
+
+            <div class="mb-6 text-left">
+                <h2 class="text-xl font-bold mb-2">How to Play:</h2>
+                <ul class="list-disc list-inside space-y-2 text-sm text-purple-700">
+                    <li>Solve the multiplication problems to collect ingredients.</li>
+                    <li>You have a limited time to complete all problems in each level.</li>
+                    <li>Complete a level to earn a new ingredient for your collection!</li>
+                    <li>Collect all the ingredients for your specific potion recipe to win the game!</li>
+                </ul>
+            </div>
+
+            <button id="start-button" class="bg-fuchsia-500 hover:bg-fuchsia-600 text-white font-bold py-4 px-2 rounded-lg text-2xl transition-transform active:scale-95 w-full">Start Game</button>
+        </div>
+        
+        <!-- Game Screen with a responsive grid layout for larger screens -->
+        <div id="game-screen" class="hidden w-full max-w-7xl mx-auto">
+            <div class="md:grid md:grid-cols-2 md:gap-8 items-start">
+                <!-- Left Column: Game Problem -->
+                <div class="flex flex-col items-center justify-center bg-white p-6 md:p-8 rounded-2xl shadow-xl w-full space-y-8 mb-4 md:mb-0">
+                    <h1 class="text-3xl font-bold mb-2">Potion Master</h1>
+                    <p class="text-purple-500 mb-6 text-center">Answer correctly to collect your ingredients!</p>
+                
+                    <div id="level-status" class="mb-4 w-full">
+                        <span id="level-text" class="text-lg font-bold">Level: 0/12 Ingredients</span>
+                        <div class="w-full bg-purple-200 rounded-full h-2.5 mt-2">
+                            <div id="progress-bar" class="bg-fuchsia-500 h-2.5 rounded-full transition-all duration-500" style="width: 0%;"></div>
+                        </div>
+                    </div>
+                
+                    <div id="timer" class="text-xl font-bold text-red-500 my-4 hidden">Time: 120s</div>
+                
+                    <div id="problem-container">
+                        <div id="problem" class="text-5xl md:text-6xl font-bold my-8 text-fuchsia-600">
+                            ...
+                        </div>
+                        <div id="answers-grid" class="grid grid-cols-2 gap-4">
+                        </div>
+                    </div>
+                
+                    <p id="feedback" class="mt-6 h-6 text-lg font-medium">&nbsp;</p>
+                </div>
+                
+                <!-- Right Column: Potion Info and Ingredient Collection -->
+                <div class="flex flex-col space-y-4">
+                    <div class="bg-white p-6 md:p-8 rounded-2xl shadow-xl w-full">
+                        <h2 class="text-2xl font-bold mb-4 text-center">Current Potion</h2>
+                        <div id="current-potion-info" class="flex flex-col items-center space-y-4">
+                            <div id="potion-name" class="font-bold text-lg text-fuchsia-600"></div>
+                            <ul id="required-ingredients-list" class="ingredient-list text-left w-full max-w-xs mx-auto"></ul>
+                        </div>
+                    </div>
+                
+                    <div class="bg-white p-6 md:p-8 rounded-2xl shadow-xl w-full">
+                        <h2 class="text-2xl font-bold mb-4 text-center">My Ingredients</h2>
+                        <div id="collection-grid" class="grid grid-cols-4 sm:grid-cols-6 gap-3">
+                        </div>
+                        <!-- Potion Recipe Container -->
+                        <div id="recipe-container" class="hidden mt-6 text-left">
+                            <h3 class="text-xl font-bold mb-2 text-fuchsia-600 text-center">Your Potion Recipe!</h3>
+                            <div id="recipe-content" class="text-sm text-purple-700 p-4 bg-purple-100 rounded-lg">
+                                <div class="flex justify-center items-center h-24" id="loading-dots">
+                                    <span class="loading-dot w-2 h-2 bg-fuchsia-500 rounded-full mx-1"></span>
+                                    <span class="loading-dot w-2 h-2 bg-fuchsia-500 rounded-full mx-1"></span>
+                                    <span class="loading-dot w-2 h-2 bg-fuchsia-500 rounded-full mx-1"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const welcomeScreenEl = document.getElementById('welcome-screen');
+        const gameScreenEl = document.getElementById('game-screen');
+        const startButtonEl = document.getElementById('start-button');
+        const problemEl = document.getElementById('problem');
+        const answersGridEl = document.getElementById('answers-grid');
+        const feedbackEl = document.getElementById('feedback');
+        const collectionGridEl = document.getElementById('collection-grid');
+        const levelTextEl = document.getElementById('level-text');
+        const progressBarEl = document.getElementById('progress-bar');
+        const timerEl = document.getElementById('timer');
+        const problemContainerEl = document.getElementById('problem-container');
+        const recipeContainerEl = document.getElementById('recipe-container');
+        const recipeContentEl = document.getElementById('recipe-content');
+        const potionNameEl = document.getElementById('potion-name');
+        const requiredIngredientsListEl = document.getElementById('required-ingredients-list');
+
+        let shuffledLevels = [];
+        let currentLevelIndex = 0;
+        let completedProblemsForLevel = new Set();
+        let collectedParts = new Set();
+        let targetRecipe = null;
+        let audioCtx;
+        let timerIntervalId;
+        let timeLeft = 120;
+        
+        const allProblemsInLevel = Array.from({length: 12}, (_, i) => i + 1);
+        const allLevels = Array.from({length: 12}, (_, i) => i + 1);
+        const TIERS = {
+            'Easy Tier': [1, 2, 3, 4],
+            'Medium Tier': [5, 6, 7, 8],
+            'Hard Tier': [9, 10, 11, 12]
+        };
+        const tierNames = ['Easy Tier', 'Medium Tier', 'Hard Tier'];
+
+        const potionIngredients = {
+            1: { svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#FDBA74" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zM12 2a10 10 0 100 20 10 10 0 000-20z"/><path d="M16 16c-1.5-1.5-3-2-4-2s-2.5.5-4 2m8 0a2 2 0 100 4 2 2 0 000-4zM8 16a2 2 10 100 4 2 2 0 000-4zM12 12V8M14 10H10"/></svg>`, name: "Glimmerwing Feather" },
+            2: { svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#A78BFA" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 10V20a2 2 0 01-2 2H8a2 2 0 01-2-2V10M12 2V8M15 5h-6M10 14h4M10 18h4"/></svg>`, name: "Moonpetal" },
+            3: { svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"/><circle cx="12" cy="12" r="4"/><path d="M8 8L6 6M16 8L18 6M8 16L6 18M16 16L18 18"/></svg>`, name: "Toadstool Cap" },
+            4: { svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#EC4899" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 22V10a2 2 0 012-2h4a2 2 0 012 2v12M10 14h4M8 18h8M10 22h4"/></svg>`, name: "Crystal Shard" },
+            5: { svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#FBBF24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2" width="12" height="20" rx="3" ry="3"/><path d="M12 6V18M12 6c-2-1-4 0-4 4s2 5 4 5 4-4 4-5-2-5-4-4z"/></svg>`, name: "Spider Silk" },
+            6: { svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#C084FC" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2"/><path d="M12 4v4m0 8v4M4 12h4m8 0h4"/></svg>`, name: "Fairy Dust" },
+            7: { svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#F87171" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 12L18 18M12 12L6 18M12 12L18 6M12 12L6 6"/></svg>`, name: "Dragon's Breath Blossom" },
+            8: { svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#A3E635" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"/><path d="M12 4v16m-4-8h8m-4-8v16M4 12h16"/></svg>`, name: "Goblin's Ear" },
+            9: { svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#60A5FA" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="6"/><path d="M12 6a6 6 0 016 6 6 6 0 01-6 6M12 6a6 6 0 00-6 6 6 6 0 006 6M12 12L6 12M12 12L18 12M12 12L12 6M12 12L12 18"/></svg>`, name: "Mermaid's Scale" },
+            10: { svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#2DD4BF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12H12M12 12v10M12 12L2 22M12 12L2 2M12 12L22 2M12 12L22 22"/></svg>`, name: "Unicorn Horn Shaving" },
+            11: { svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#FDBA74" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 10c-2 2-4 0-4 0M10 14h4M6 14a2 2 0 100-4 2 2 0 000 4zM18 14a2 2 0 100-4 2 2 0 000 4zM6 12h12"/></svg>`, name: "Gloomroot" },
+            12: { svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#F472B6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M12 4v4m0 8v4m-8-4h4m8 0h4m-8-8L8 8m8-4-4 4m-4 8L8 16m8 4-4-4"/></svg>`, name: "Star Jelly" }
+        };
+
+        const allRecipes = [
+            {
+                name: "Potion of Instant Nap",
+                requiredIngredients: [3, 5, 11],
+                html: `
+                    <h4 class="font-bold text-lg mb-2">Potion of Instant Nap</h4>
+                    <p>A quick-acting sedative that guarantees deep, immediate sleep. Perfect for noisy neighbors, long meetings, or getting some rest after a long day of brewing!</p>
+                    <h5 class="font-bold mt-4 mb-2">Instructions:</h5>
+                    <ul class="list-disc list-inside space-y-1">
+                        <li>Gently mash the **Toadstool Cap** into a fine paste.</li>
+                        <li>Dissolve the **Gloomroot** in warm water, then add it to the paste.</li>
+                        <li>Stir in a single strand of **Spider Silk**.</li>
+                        <li>Allow to steep for 10 minutes before drinking. Zzzzzz.</li>
+                    </ul>
+                `
+            },
+            {
+                name: "Elixir of Loud Burping",
+                requiredIngredients: [1, 4, 8, 9, 10],
+                html: `
+                    <h4 class="font-bold text-lg mb-2">Elixir of Loud Burping</h4>
+                    <p>A mischievous brew that causes the drinker to let out a thunderous, echoing burp at the most inappropriate moments. Great for pranking friends!</p>
+                    <h5 class="font-bold mt-4 mb-2">Instructions:</h5>
+                    <ul class="list-disc list-inside space-y-1">
+                        <li>Crush the **Goblin's Ear** and **Crystal Shard** in a mortar.</li>
+                        <li>Sprinkle the powder into a bubbling cauldron.</li>
+                        <li>Add the **Mermaid's Scale**, followed by the **Unicorn Horn Shaving**.</li>
+                        <li>Finish with a single **Glimmerwing Feather** to add that extra kick.</li>
+                        <li>The potion will bubble; serve immediately.</li>
+                    </ul>
+                `
+            },
+            {
+                name: "Brew of Wobbly Knees",
+                requiredIngredients: [2, 5, 7, 9, 10, 11, 12],
+                html: `
+                    <h4 class="font-bold text-lg mb-2">Brew of Wobbly Knees</h4>
+                    <p>This fizzy concoction causes the drinker's knees to feel like jelly, making it impossible to walk in a straight line for an hour. Best enjoyed at dance parties.</p>
+                    <h5 class="font-bold mt-4 mb-2">Instructions:</h5>
+                    <ul class="list-disc list-inside space-y-1">
+                        <li>Mix the **Gloomroot** and **Star Jelly** in a vial.</li>
+                        <li>Carefully add the **Moonpetal** and **Mermaid's Scale**.</li>
+                        <li>For the final touch, add the **Unicorn Horn Shaving** and **Dragon's Breath Blossom**.</li>
+                        <li>The brew will begin to fizz. Sip and get ready to wobble!</li>
+                    </ul>
+                `
+            },
+            {
+                name: "Concoction of Uncontrollable Giggles",
+                requiredIngredients: [1, 2, 3, 4, 5, 6, 7, 8, 9],
+                html: `
+                    <h4 class="font-bold text-lg mb-2">Concoction of Uncontrollable Giggles</h4>
+                    <p>A fun-loving potion that brings about waves of euphoric and contagious giggling. It’s impossible to be sad after drinking this brew!</p>
+                    <h5 class="font-bold mt-4 mb-2">Instructions:</h5>
+                    <ul class="list-disc list-inside space-y-1">
+                        <li>Begin by combining all the dry ingredients: **Glimmerwing Feather**, **Toadstool Cap**, **Fairy Dust**, **Crystal Shard**, and **Spider Silk**.</li>
+                        <li>In a separate bowl, crush the **Moonpetal** and **Mermaid's Scale** with a splash of water.</li>
+                        <li>Slowly pour the liquid mixture into the dry ingredients.</li>
+                        <li>Finally, add the **Dragon's Breath Blossom** and **Goblin's Ear**. Stir well.</li>
+                        <li>The potion is ready when you start smiling!</li>
+                    </ul>
+                `
+            },
+            {
+                name: "Potion of Ultimate Wisdom",
+                requiredIngredients: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+                html: `
+                    <h4 class="font-bold text-lg mb-2">Potion of Ultimate Wisdom</h4>
+                    <p>This legendary concoction grants the drinker unparalleled insight and foresight, allowing them to perceive hidden truths and predict future events. Use with caution, as a single drop is said to contain the knowledge of a thousand lifetimes.</p>
+                    <h5 class="font-bold mt-4 mb-2">Instructions:</h5>
+                    <ul class="list-disc list-inside space-y-1">
+                        <li>Gently heat a cauldron over a low flame.</li>
+                        <li>Add the **Dragon's Breath Blossom** and **Mermaid's Scale** until a faint shimmer appears.</li>
+                        <li>Carefully stir in the **Unicorn Horn Shaving** and **Fairy Dust**.</li>
+                        <li>The mixture will turn a soft gold; add the remaining ingredients and bring to a boil.</li>
+                        <li>Sip immediately to gain the knowledge you seek!</li>
+                    </ul>
+                `
+            },
+            {
+                name: "Potion of Invisibility to Sibling",
+                requiredIngredients: [2, 6, 11],
+                html: `
+                    <h4 class="font-bold text-lg mb-2">Potion of Invisibility to Sibling</h4>
+                    <p>A sneaky concoction that makes you invisible, but only to your siblings, allowing you to grab the last cookie without them noticing.</p>
+                    <h5 class="font-bold mt-4 mb-2">Instructions:</h5>
+                    <ul class="list-disc list-inside space-y-1">
+                        <li>Grind **Gloomroot** to a fine powder.</li>
+                        <li>Mix the powder with a single **Moonpetal**.</li>
+                        <li>Add a pinch of **Fairy Dust** and drink quickly.</li>
+                    </ul>
+                `
+            },
+            {
+                name: "Elixir of Fluffy Clouds",
+                requiredIngredients: [4, 8, 12],
+                html: `
+                    <h4 class="font-bold text-lg mb-2">Elixir of Fluffy Clouds</h4>
+                    <p>A light and airy brew that makes you feel as though you're floating on a fluffy cloud. Side effect: You may start to hum a very annoying tune.</p>
+                    <h5 class="font-bold mt-4 mb-2">Instructions:</h5>
+                    <ul class="list-disc list-inside space-y-1">
+                        <li>Carefully slice a **Goblin's Ear** into thin strips.</li>
+                        <li>Dissolve a **Crystal Shard** and a single glob of **Star Jelly**.</li>
+                        <li>Stir everything together and sip slowly for the best effect.</li>
+                    </ul>
+                `
+            },
+            {
+                name: "Tincture of Squeaky Voices",
+                requiredIngredients: [1, 3, 5, 7, 9],
+                html: `
+                    <h4 class="font-bold text-lg mb-2">Tincture of Squeaky Voices</h4>
+                    <p>This potent potion temporarily changes your voice to a high-pitched squeak, making even the most serious declaration sound ridiculous.</p>
+                    <h5 class="font-bold mt-4 mb-2">Instructions:</h5>
+                    <ul class="list-disc list-inside space-y-1">
+                        <li>Combine the **Toadstool Cap** and **Spider Silk** in a beaker.</li>
+                        <li>Add the **Dragon's Breath Blossom** and **Mermaid's Scale**.</li>
+                        <li>Finish the potion with a single **Glimmerwing Feather** for a delightful fizz.</li>
+                    </ul>
+                `
+            },
+            {
+                name: "Brew of Forgetfulness",
+                requiredIngredients: [2, 4, 6, 8, 10, 12],
+                html: `
+                    <h4 class="font-bold text-lg mb-2">Brew of Forgetfulness</h4>
+                    <p>A gentle, swirling brew that helps you forget small, embarrassing moments, like tripping on the stairs or calling your teacher "Mom".</p>
+                    <h5 class="font-bold mt-4 mb-2">Instructions:</h5>
+                    <ul class="list-disc list-inside space-y-1">
+                        <li>Start with the liquid ingredients: **Moonpetal** and **Star Jelly**.</li>
+                        <li>Stir in the powdered ingredients: **Fairy Dust** and **Unicorn Horn Shaving**.</li>
+                        <li>Add the **Goblin's Ear** and **Crystal Shard**.</li>
+                        <li>The potion will bubble and change color. Do not let it boil!</li>
+                    </ul>
+                `
+            },
+            {
+                name: "Potion of Super Speed",
+                requiredIngredients: [1, 3, 5, 7, 9, 10, 11, 12],
+                html: `
+                    <h4 class="font-bold text-lg mb-2">Potion of Super Speed</h4>
+                    <p>A potent elixir that allows you to move at incredible speeds. Warning: May cause a serious case of bedhead!</p>
+                    <h5 class="font-bold mt-4 mb-2">Instructions:</h5>
+                    <ul class="list-disc list-inside space-y-1">
+                        <li>Combine all ingredients into a large cauldron.</li>
+                        <li>Quickly stir with a large wooden spoon.</li>
+                        <li>Add a final **Glimmerwing Feather** for that extra burst of speed.</li>
+                        <li>The potion will turn a vibrant purple. Drink in one gulp!</li>
+                    </ul>
+                `
+            }
+        ];
+
+        function playSound(type) {
+            if (!audioCtx) {
+                try {
+                    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                } catch (e) {
+                    console.error("Web Audio API is not supported in this browser");
+                    return;
+                }
+            }
+            const oscillator = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+
+            if (type === 'correct') {
+                oscillator.type = 'sine';
+                oscillator.frequency.setValueAtTime(800, audioCtx.currentTime);
+                oscillator.frequency.linearRampToValueAtTime(1000, audioCtx.currentTime + 0.1);
+                gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.5);
+            } else if (type === 'incorrect') {
+                oscillator.type = 'sawtooth';
+                oscillator.frequency.setValueAtTime(200, audioCtx.currentTime);
+                oscillator.frequency.linearRampToValueAtTime(100, audioCtx.currentTime + 0.3);
+                gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.3);
+            } else if (type === 'tick') {
+                oscillator.type = 'square';
+                oscillator.frequency.setValueAtTime(500, audioCtx.currentTime);
+                gainNode.gain.setValueAtTime(0.15, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.1);
+            } else if (type === 'timeout') {
+                oscillator.type = 'sawtooth';
+                oscillator.frequency.setValueAtTime(400, audioCtx.currentTime);
+                oscillator.frequency.linearRampToValueAtTime(200, audioCtx.currentTime + 0.5);
+                gainNode.gain.setValueAtTime(0.4, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.5);
+            } else if (type === 'celebrate') {
+                oscillator.type = 'triangle';
+                oscillator.frequency.setValueAtTime(600, audioCtx.currentTime);
+                oscillator.frequency.linearRampToValueAtTime(1200, audioCtx.currentTime + 0.2);
+                gainNode.gain.setValueAtTime(0.4, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 1);
+            }
+
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            oscillator.start();
+            oscillator.stop(audioCtx.currentTime + 0.5);
+        }
+
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+
+        function saveGame() {
+            localStorage.setItem('collectedParts', JSON.stringify(Array.from(collectedParts)));
+            localStorage.setItem('shuffledLevels', JSON.stringify(shuffledLevels));
+            localStorage.setItem('currentLevelIndex', currentLevelIndex);
+            localStorage.setItem('completedProblemsForLevel', JSON.stringify(Array.from(completedProblemsForLevel)));
+            localStorage.setItem('targetRecipe', JSON.stringify(targetRecipe));
+        }
+
+        function loadGame() {
+            const savedCollection = localStorage.getItem('collectedParts');
+            if (savedCollection) {
+                collectedParts = new Set(JSON.parse(savedCollection));
+            }
+            const savedLevels = localStorage.getItem('shuffledLevels');
+            if (savedLevels) {
+                const parsedLevels = JSON.parse(savedLevels);
+                if (parsedLevels.length === 12) {
+                    shuffledLevels = parsedLevels;
+                }
+            }
+            const savedLevelIndex = localStorage.getItem('currentLevelIndex');
+            if (savedLevelIndex) {
+                currentLevelIndex = parseInt(savedLevelIndex, 10);
+            }
+            const savedProblems = localStorage.getItem('completedProblemsForLevel');
+            if (savedProblems) {
+                completedProblemsForLevel = new Set(JSON.parse(savedProblems));
+            }
+            const savedRecipe = localStorage.getItem('targetRecipe');
+            if (savedRecipe) {
+                targetRecipe = JSON.parse(savedRecipe);
+            }
+        }
+        
+        function updateLevelUI() {
+            let tierName;
+            if (currentLevelIndex < 4) {
+                tierName = 'Easy Tier';
+            } else if (currentLevelIndex < 8) {
+                tierName = 'Medium Tier';
+            } else {
+                tierName = 'Hard Tier';
+            }
+            levelTextEl.textContent = `Level: ${currentLevelIndex + 1}/12 Ingredients (${tierName})`;
+            const progress = (currentLevelIndex / 12) * 100;
+            progressBarEl.style.width = `${progress}%`;
+        }
+
+        function updatePotionInfoUI() {
+            if (targetRecipe) {
+                potionNameEl.textContent = targetRecipe.name;
+                requiredIngredientsListEl.innerHTML = '';
+                targetRecipe.requiredIngredients.forEach(id => {
+                    const li = document.createElement('li');
+                    const statusDot = document.createElement('span');
+                    statusDot.className = `ingredient-status ${collectedParts.has(id) ? 'completed-ingredient' : 'incomplete-ingredient'}`;
+                    
+                    const ingredientName = document.createElement('span');
+                    ingredientName.textContent = potionIngredients[id].name;
+                    ingredientName.className = collectedParts.has(id) ? 'line-through text-purple-400' : 'font-bold';
+                    
+                    li.appendChild(statusDot);
+                    li.appendChild(ingredientName);
+                    requiredIngredientsListEl.appendChild(li);
+                });
+            }
+        }
+        
+        function startTimer() {
+            stopTimer();
+            timeLeft = 120;
+            timerEl.textContent = `Time: ${timeLeft}s`;
+            timerEl.classList.remove('hidden');
+
+            timerIntervalId = setInterval(() => {
+                timeLeft--;
+                timerEl.textContent = `Time: ${timeLeft}s`;
+                
+                if (timeLeft <= 15 && timeLeft > 0) {
+                    timerEl.classList.add('text-red-500');
+                    timerEl.classList.remove('text-slate-500');
+                    playSound('tick');
+                } else {
+                    timerEl.classList.add('text-slate-500');
+                    timerEl.classList.remove('text-red-500');
+                }
+
+                if (timeLeft <= 0) {
+                    stopTimer();
+                    endGame('Time\'s up! Try again.');
+                }
+            }, 1000);
+        }
+
+        function stopTimer() {
+            if (timerIntervalId) {
+                clearInterval(timerIntervalId);
+                timerIntervalId = null;
+            }
+        }
+        
+        function showPotionRecipe() {
+            recipeContainerEl.classList.remove('hidden');
+            if (targetRecipe) {
+                recipeContentEl.innerHTML = targetRecipe.html;
+            } else {
+                recipeContentEl.innerHTML = `
+                    <h4 class="font-bold text-lg mb-2">Mysterious Potion</h4>
+                    <p>You have an unusual combination of ingredients. Try a different recipe!</p>
+                `;
+            }
+        }
+
+        function endGame(message) {
+            feedbackEl.textContent = message;
+            feedbackEl.className = 'mt-6 h-6 text-lg font-bold text-red-600';
+            answersGridEl.innerHTML = '';
+            problemEl.textContent = '\u00A0';
+            stopTimer();
+            playSound('timeout');
+
+            const tryAgainButton = document.createElement('button');
+            tryAgainButton.textContent = 'Try Again';
+            tryAgainButton.className = 'bg-fuchsia-500 hover:bg-fuchsia-600 text-white font-bold py-4 px-2 rounded-lg text-2xl transition-transform active:scale-95 mt-4 w-full';
+            tryAgainButton.addEventListener('click', resetLevelAndStart);
+            problemContainerEl.appendChild(tryAgainButton);
+        }
+
+        function resetLevelAndStart() {
+            completedProblemsForLevel.clear();
+            saveGame();
+            
+            const tryAgainButton = problemContainerEl.querySelector('button');
+            if (tryAgainButton) {
+                tryAgainButton.remove();
+            }
+
+            generateProblem();
+        }
+
+        function renderCollection() {
+            collectionGridEl.innerHTML = '';
+            for (let i = 1; i <= 12; i++) {
+                const part = potionIngredients[i];
+                const isCollected = collectedParts.has(i);
+
+                const partWrapper = document.createElement('div');
+                partWrapper.id = `ingredient-slot-${i}`;
+                partWrapper.className = `p-2 rounded-lg flex flex-col items-center justify-center aspect-square transition-all duration-300 collected-part ${isCollected ? 'bg-purple-200' : 'bg-slate-200 opacity-40'}`;
+                
+                const svgContainer = document.createElement('div');
+                svgContainer.className = 'w-full h-full';
+                svgContainer.innerHTML = part.svg;
+
+                const nameContainer = document.createElement('div');
+                nameContainer.className = 'text-xs font-bold mt-1';
+                nameContainer.textContent = isCollected ? part.name : '?';
+                
+                partWrapper.appendChild(svgContainer);
+                partWrapper.appendChild(nameContainer);
+                collectionGridEl.appendChild(partWrapper);
+            }
+        }
+
+        function generateProblem() {
+            feedbackEl.textContent = '\u00A0';
+            
+            const remainingProblems = allProblemsInLevel.filter(num => !completedProblemsForLevel.has(num));
+            
+            // Check for level completion
+            if (remainingProblems.length === 0) {
+                feedbackEl.textContent = 'Level Complete!';
+                feedbackEl.className = 'mt-6 h-6 text-lg font-bold text-green-600';
+                
+                const currentLevel = shuffledLevels[currentLevelIndex];
+                collectedParts.add(currentLevel);
+                playSound('celebrate'); // Play celebratory sound
+                highlightNewCollection(currentLevel);
+
+                stopTimer();
+                currentLevelIndex++;
+                completedProblemsForLevel.clear();
+                saveGame();
+                renderCollection();
+                updatePotionInfoUI();
+
+                // Check for game completion
+                const hasWon = targetRecipe.requiredIngredients.every(id => collectedParts.has(id));
+                if (hasWon) {
+                    feedbackEl.textContent = 'You did it! You are a master potion brewer!';
+                    const recipeButton = document.createElement('button');
+                    recipeButton.textContent = '✨ View Potion Recipe';
+                    recipeButton.className = 'bg-fuchsia-500 hover:bg-fuchsia-600 text-white font-bold py-4 px-2 rounded-lg text-2xl transition-transform active:scale-95 mt-4 w-full';
+                    recipeButton.addEventListener('click', showPotionRecipe);
+                    problemContainerEl.appendChild(recipeButton);
+                    
+                    const restartButton = document.createElement('button');
+                    restartButton.textContent = 'Restart Game';
+                    restartButton.className = 'bg-slate-500 hover:bg-slate-600 text-white font-bold py-4 px-2 rounded-lg text-2xl transition-transform active:scale-95 mt-4 w-full';
+                    restartButton.addEventListener('click', () => {
+                        location.reload();
+                    });
+                    problemContainerEl.appendChild(restartButton);
+                } else if (currentLevelIndex < shuffledLevels.length) {
+                    setTimeout(generateProblem, 2000);
+                } else {
+                    // All levels played, but potion not completed
+                    feedbackEl.textContent = 'You have no more levels, but you did not collect all your ingredients! Try again.';
+                    const restartButton = document.createElement('button');
+                    restartButton.textContent = 'Restart Game';
+                    restartButton.className = 'bg-fuchsia-500 hover:bg-fuchsia-600 text-white font-bold py-4 px-2 rounded-lg text-2xl transition-transform active:scale-95 mt-4 w-full';
+                    restartButton.addEventListener('click', () => {
+                        location.reload();
+                    });
+                    problemContainerEl.appendChild(restartButton);
+                }
+                return;
+            }
+
+            let num1;
+            if (currentLevelIndex < 4) {
+                num1 = TIERS['Easy Tier'][Math.floor(Math.random() * TIERS['Easy Tier'].length)];
+            } else if (currentLevelIndex < 8) {
+                num1 = TIERS['Medium Tier'][Math.floor(Math.random() * TIERS['Medium Tier'].length)];
+            } else {
+                num1 = TIERS['Hard Tier'][Math.floor(Math.random() * TIERS['Hard Tier'].length)];
+            }
+
+            const num2 = remainingProblems[Math.floor(Math.random() * remainingProblems.length)];
+            const correctAnswer = num1 * num2;
+            
+            problemEl.textContent = `${num1} × ${num2}`;
+            
+            const answers = new Set([correctAnswer]);
+            while (answers.size < 4) {
+                const offset = Math.floor(Math.random() * 10) - 5;
+                const wrongAnswer = correctAnswer + offset * num1;
+                if (wrongAnswer > 0 && wrongAnswer !== correctAnswer) {
+                    answers.add(wrongAnswer);
+                }
+            }
+
+            const shuffledAnswers = Array.from(answers).sort(() => Math.random() - 0.5);
+
+            answersGridEl.innerHTML = '';
+            shuffledAnswers.forEach(answer => {
+                const button = document.createElement('button');
+                button.className = "bg-fuchsia-500 hover:bg-fuchsia-600 text-white font-bold py-4 px-2 rounded-lg text-2xl transition-transform active:scale-95 disabled:bg-slate-400";
+                button.textContent = answer;
+                button.dataset.answer = answer;
+                button.dataset.num2 = num2;
+                answersGridEl.appendChild(button);
+            });
+
+            if (completedProblemsForLevel.size === 0) {
+                startTimer();
+            }
+
+            updateLevelUI();
+        }
+        
+        function handleAnswerClick(event) {
+            if (event.target.tagName !== 'BUTTON') return;
+            
+            if (timeLeft <= 0) {
+                return;
+            }
+
+            const selectedAnswer = parseInt(event.target.dataset.answer, 10);
+            const num2 = parseInt(event.target.dataset.num2, 10);
+            const num1 = shuffledLevels[currentLevelIndex];
+            const correctAnswer = num1 * num2;
+            const isCorrect = selectedAnswer === correctAnswer;
+            
+            Array.from(answersGridEl.children).forEach(button => button.disabled = true);
+
+            if (isCorrect) {
+                feedbackEl.textContent = 'Correct!';
+                feedbackEl.className = 'mt-6 h-6 text-lg font-medium text-green-600';
+                playSound('correct');
+                completedProblemsForLevel.add(num2);
+                saveGame();
+                
+                setTimeout(generateProblem, 1500);
+            } else {
+                feedbackEl.textContent = 'Try Again!';
+                feedbackEl.className = 'mt-6 h-6 text-lg font-medium text-red-600';
+                playSound('incorrect');
+                
+                setTimeout(() => {
+                    feedbackEl.textContent = '\u00A0';
+                    Array.from(answersGridEl.children).forEach(button => button.disabled = false);
+                }, 1000);
+            }
+        }
+
+        function highlightNewCollection(partId) {
+            const el = document.getElementById(`ingredient-slot-${partId}`);
+            if (el) {
+                el.classList.add('newly-collected');
+                setTimeout(() => {
+                    el.classList.remove('newly-collected');
+                }, 1000);
+            }
+        }
+
+        function startGame() {
+            welcomeScreenEl.classList.add('hidden');
+            gameScreenEl.classList.remove('hidden');
+
+            if (!targetRecipe) {
+                targetRecipe = allRecipes[Math.floor(Math.random() * allRecipes.length)];
+                shuffledLevels = shuffleArray([...allLevels]);
+                currentLevelIndex = 0;
+                collectedParts.clear();
+                completedProblemsForLevel.clear();
+                saveGame();
+            }
+            
+            renderCollection();
+            updatePotionInfoUI();
+            generateProblem();
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadGame();
+            startButtonEl.addEventListener('click', startGame);
+            answersGridEl.addEventListener('click', handleAnswerClick);
+            
+            // If a game is in progress, show the game screen on load
+            if (targetRecipe) {
+                gameScreenEl.classList.remove('hidden');
+                welcomeScreenEl.classList.add('hidden');
+                renderCollection();
+                updatePotionInfoUI();
+                generateProblem();
+            }
+        });
+    </script>
+</body>
+</html>
