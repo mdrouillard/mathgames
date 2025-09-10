@@ -428,8 +428,13 @@
             const savedLevels = localStorage.getItem('shuffledLevels');
             if (savedLevels) {
                 const parsedLevels = JSON.parse(savedLevels);
-                if (parsedLevels.length === 12) {
+                // Updated load logic: check if the loaded levels match a recipe
+                const foundRecipe = allRecipes.find(recipe =>
+                    JSON.stringify(recipe.requiredIngredients.sort()) === JSON.stringify(parsedLevels.sort())
+                );
+                if (foundRecipe) {
                     shuffledLevels = parsedLevels;
+                    targetRecipe = foundRecipe;
                 }
             }
             const savedLevelIndex = localStorage.getItem('currentLevelIndex');
@@ -447,15 +452,10 @@
         }
         
         function updateLevelUI() {
-            let tierName;
-            if (currentLevelIndex < 4) {
-                tierName = 'Easy Tier';
-            } else if (currentLevelIndex < 8) {
-                tierName = 'Medium Tier';
-            } else {
-                tierName = 'Hard Tier';
-            }
-            levelTextEl.textContent = `Level: ${currentLevelIndex + 1}/12 Ingredients (${tierName})`;
+            // Update the level display to show progress based on the recipe's ingredient count
+            const totalIngredientsNeeded = targetRecipe ? targetRecipe.requiredIngredients.length : 12;
+            levelTextEl.textContent = `Level: ${currentLevelIndex + 1}/${totalIngredientsNeeded} Ingredients`;
+            
             const progress = (completedProblemsForLevel.size / allProblemsInLevel.length) * 100;
             progressBarEl.style.width = `${progress}%`;
         }
@@ -490,7 +490,8 @@
                 timeLeft--;
                 timerEl.textContent = `Time: ${timeLeft}s`;
                 
-                if (timeLeft <= 15 && timeLeft > 0) {
+                // Play a ticking sound during the last 20 seconds
+                if (timeLeft <= 20 && timeLeft > 0) {
                     timerEl.classList.add('text-red-500');
                     timerEl.classList.remove('text-slate-500');
                     playSound('tick');
@@ -632,7 +633,7 @@
                 return;
             }
             
-            // The fix: Get the current ingredient ID (which represents the first number in the problem)
+            // Get the current ingredient ID (which represents the first number in the problem)
             const num1 = shuffledLevels[currentLevelIndex];
             
             // Get a random problem number from the remaining ones
@@ -697,7 +698,6 @@
             } else {
                 feedbackEl.textContent = 'Try Again!';
                 feedbackEl.className = 'mt-6 h-6 text-lg font-medium text-red-600';
-                playSound('incorrect');
                 
                 setTimeout(() => {
                     feedbackEl.textContent = '\u00A0';
@@ -721,8 +721,12 @@
             gameScreenEl.classList.remove('hidden');
 
             if (!targetRecipe) {
+                // Select a random recipe for the user to work towards
                 targetRecipe = allRecipes[Math.floor(Math.random() * allRecipes.length)];
-                shuffledLevels = shuffleArray([...allLevels]);
+                
+                // Shuffle only the ingredients from the chosen recipe
+                shuffledLevels = shuffleArray([...targetRecipe.requiredIngredients]);
+                
                 currentLevelIndex = 0;
                 collectedParts.clear();
                 completedProblemsForLevel.clear();
@@ -734,14 +738,21 @@
             generateProblem();
         }
 
-        document.addEventListener('DOMContentLoaded', () => {
+        // ---
+        // New logic to handle both local and server environments
+        function initializeGame() {
             loadingScreenEl.classList.add('hidden');
             welcomeScreenEl.classList.remove('hidden');
 
-            // The only way to start the game is by clicking the button.
             startButtonEl.addEventListener('click', startGame);
             answersGridEl.addEventListener('click', handleAnswerClick);
-        });
+        }
+
+        if (document.readyState === 'complete' || document.readyState === 'interactive') {
+            initializeGame();
+        } else {
+            document.addEventListener('DOMContentLoaded', initializeGame);
+        }
     </script>
 </body>
 </html>
