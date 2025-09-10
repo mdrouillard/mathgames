@@ -73,8 +73,8 @@
             </div>
         </div>
 
-        <!-- Welcome Screen and Instructions - Initially hidden -->
-        <div id="welcome-screen" class="hidden bg-white p-6 md:p-8 rounded-2xl shadow-xl w-full max-w-md text-center">
+        <!-- Welcome Screen and Instructions - No longer hidden by default -->
+        <div id="welcome-screen" class="bg-white p-6 md:p-8 rounded-2xl shadow-xl w-full max-w-md text-center">
             <h1 class="text-3xl font-bold mb-2">Welcome, Potion Master!</h1>
             <p class="text-purple-500 mb-6">Your first task is at hand. You must gather rare ingredients before they spoil!</p>
 
@@ -91,7 +91,7 @@
             <button id="start-button" class="bg-fuchsia-500 hover:bg-fuchsia-600 text-white font-bold py-4 px-2 rounded-lg text-2xl transition-transform active:scale-95 w-full">Start Game</button>
         </div>
         
-        <!-- Game Screen with a responsive grid layout for larger screens - Initially hidden -->
+        <!-- Game Screen with a responsive grid layout for larger screens - Still hidden by default -->
         <div id="game-screen" class="hidden w-full max-w-7xl mx-auto">
             <div class="md:grid md:grid-cols-2 md:gap-8 items-start">
                 <!-- Left Column: Game Problem -->
@@ -748,6 +748,7 @@
                 updatePotionInfoUI();
                 generateProblem();
             } else {
+                gameScreenEl.classList.add('hidden');
                 welcomeScreenEl.classList.remove('hidden');
             }
         });
