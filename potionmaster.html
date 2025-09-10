@@ -735,23 +735,12 @@
         }
 
         document.addEventListener('DOMContentLoaded', () => {
-            loadGame();
+            loadingScreenEl.classList.add('hidden');
+            welcomeScreenEl.classList.remove('hidden');
+
+            // The only way to start the game is by clicking the button.
             startButtonEl.addEventListener('click', startGame);
             answersGridEl.addEventListener('click', handleAnswerClick);
-            
-            loadingScreenEl.classList.add('hidden');
-            // Show the welcome screen by default, unless a game is in progress
-            if (targetRecipe && currentLevelIndex < shuffledLevels.length) {
-                welcomeScreenEl.classList.add('hidden');
-                gameScreenEl.classList.remove('hidden');
-                renderCollection();
-                updatePotionInfoUI();
-                generateProblem();
-            } else {
-                // This is the new behavior: always show the welcome screen
-                welcomeScreenEl.classList.remove('hidden');
-                gameScreenEl.classList.add('hidden');
-            }
         });
     </script>
 </body>
