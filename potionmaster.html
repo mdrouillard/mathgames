@@ -62,9 +62,19 @@
 
     <!-- Overall container to center content -->
     <div id="game-container" class="min-h-screen flex flex-col items-center justify-center p-4">
+        
+        <!-- Loading State - Initially visible -->
+        <div id="loading-screen" class="flex flex-col items-center justify-center h-full text-2xl text-purple-600 font-bold">
+            <p>Loading Potion Master...</p>
+            <div class="flex mt-4">
+                <span class="loading-dot w-2 h-2 bg-fuchsia-500 rounded-full mx-1"></span>
+                <span class="loading-dot w-2 h-2 bg-fuchsia-500 rounded-full mx-1"></span>
+                <span class="loading-dot w-2 h-2 bg-fuchsia-500 rounded-full mx-1"></span>
+            </div>
+        </div>
 
-        <!-- Welcome Screen and Instructions -->
-        <div id="welcome-screen" class="bg-white p-6 md:p-8 rounded-2xl shadow-xl w-full max-w-md text-center">
+        <!-- Welcome Screen and Instructions - Initially hidden -->
+        <div id="welcome-screen" class="hidden bg-white p-6 md:p-8 rounded-2xl shadow-xl w-full max-w-md text-center">
             <h1 class="text-3xl font-bold mb-2">Welcome, Potion Master!</h1>
             <p class="text-purple-500 mb-6">Your first task is at hand. You must gather rare ingredients before they spoil!</p>
 
@@ -81,7 +91,7 @@
             <button id="start-button" class="bg-fuchsia-500 hover:bg-fuchsia-600 text-white font-bold py-4 px-2 rounded-lg text-2xl transition-transform active:scale-95 w-full">Start Game</button>
         </div>
         
-        <!-- Game Screen with a responsive grid layout for larger screens -->
+        <!-- Game Screen with a responsive grid layout for larger screens - Initially hidden -->
         <div id="game-screen" class="hidden w-full max-w-7xl mx-auto">
             <div class="md:grid md:grid-cols-2 md:gap-8 items-start">
                 <!-- Left Column: Game Problem -->
@@ -142,6 +152,7 @@
     </div>
 
     <script>
+        const loadingScreenEl = document.getElementById('loading-screen');
         const welcomeScreenEl = document.getElementById('welcome-screen');
         const gameScreenEl = document.getElementById('game-screen');
         const startButtonEl = document.getElementById('start-button');
@@ -445,7 +456,7 @@
                 tierName = 'Hard Tier';
             }
             levelTextEl.textContent = `Level: ${currentLevelIndex + 1}/12 Ingredients (${tierName})`;
-            const progress = (currentLevelIndex / 12) * 100;
+            const progress = (completedProblemsForLevel.size / allProblemsInLevel.length) * 100;
             progressBarEl.style.width = `${progress}%`;
         }
 
@@ -567,6 +578,7 @@
 
         function generateProblem() {
             feedbackEl.textContent = '\u00A0';
+            updateLevelUI();
             
             const remainingProblems = allProblemsInLevel.filter(num => !completedProblemsForLevel.has(num));
             
@@ -679,6 +691,7 @@
                 playSound('correct');
                 completedProblemsForLevel.add(num2);
                 saveGame();
+                updateLevelUI();
                 
                 setTimeout(generateProblem, 1500);
             } else {
@@ -726,6 +739,7 @@
             startButtonEl.addEventListener('click', startGame);
             answersGridEl.addEventListener('click', handleAnswerClick);
             
+            loadingScreenEl.classList.add('hidden');
             // If a game is in progress, show the game screen on load
             if (targetRecipe) {
                 gameScreenEl.classList.remove('hidden');
@@ -733,6 +747,8 @@
                 renderCollection();
                 updatePotionInfoUI();
                 generateProblem();
+            } else {
+                welcomeScreenEl.classList.remove('hidden');
             }
         });
     </script>
