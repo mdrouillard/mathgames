@@ -619,16 +619,11 @@
                 }
                 return;
             }
-
-            let num1;
-            if (currentLevelIndex < 4) {
-                num1 = TIERS['Easy Tier'][Math.floor(Math.random() * TIERS['Easy Tier'].length)];
-            } else if (currentLevelIndex < 8) {
-                num1 = TIERS['Medium Tier'][Math.floor(Math.random() * TIERS['Medium Tier'].length)];
-            } else {
-                num1 = TIERS['Hard Tier'][Math.floor(Math.random() * TIERS['Hard Tier'].length)];
-            }
-
+            
+            // The fix: Get the current ingredient ID (which represents the first number in the problem)
+            const num1 = shuffledLevels[currentLevelIndex];
+            
+            // Get a random problem number from the remaining ones
             const num2 = remainingProblems[Math.floor(Math.random() * remainingProblems.length)];
             const correctAnswer = num1 * num2;
             
@@ -651,6 +646,7 @@
                 button.className = "bg-fuchsia-500 hover:bg-fuchsia-600 text-white font-bold py-4 px-2 rounded-lg text-2xl transition-transform active:scale-95 disabled:bg-slate-400";
                 button.textContent = answer;
                 button.dataset.answer = answer;
+                button.dataset.num1 = num1;
                 button.dataset.num2 = num2;
                 answersGridEl.appendChild(button);
             });
@@ -670,8 +666,8 @@
             }
 
             const selectedAnswer = parseInt(event.target.dataset.answer, 10);
+            const num1 = parseInt(event.target.dataset.num1, 10);
             const num2 = parseInt(event.target.dataset.num2, 10);
-            const num1 = shuffledLevels[currentLevelIndex];
             const correctAnswer = num1 * num2;
             const isCorrect = selectedAnswer === correctAnswer;
             
