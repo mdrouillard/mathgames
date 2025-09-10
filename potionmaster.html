@@ -740,16 +740,16 @@
             answersGridEl.addEventListener('click', handleAnswerClick);
             
             loadingScreenEl.classList.add('hidden');
-            // If a game is in progress, show the game screen on load
+            // Show the welcome screen by default, unless a game is in progress
             if (targetRecipe) {
-                gameScreenEl.classList.remove('hidden');
                 welcomeScreenEl.classList.add('hidden');
+                gameScreenEl.classList.remove('hidden');
                 renderCollection();
                 updatePotionInfoUI();
                 generateProblem();
             } else {
-                gameScreenEl.classList.add('hidden');
                 welcomeScreenEl.classList.remove('hidden');
+                gameScreenEl.classList.add('hidden');
             }
         });
     </script>
