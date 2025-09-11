@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Safari Capture Progressive</title>
+<style>
+:root{
+  --bg:#d0f0c0;
+  --panel:#fff;
+  --accent:#2e7d32;
+  --muted:#555;
+  font-family:"Trebuchet MS",sans-serif;
+}
+body,html{margin:0;padding:0;overflow-x:hidden;background:var(--bg);}
+h1,h2{margin:12px;text-align:center;}
+.game-container{display:flex;flex-direction:column;align-items:center;}
+.scene{
+  position:relative;
+  width:100%;
+  max-width:1000px;
+  height:300px;
+  overflow:hidden;
+  border-radius:12px;
+  background:linear-gradient(#87ceeb,#d0f0c0);
+  border:2px solid #555;
+}
+.ground{
+  position:absolute;
+  bottom:0;
+  width:2000px;
+  height:60px;
+  background:#7cfc00;
+}
+.jeep{
+  position:absolute;
+  bottom:60px;
+  left:50px;
+  width:60px;
+  height:40px;
+  background:#8b4513;
+  border-radius:8px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:#fff;
+  font-size:28px;
+  transition:bottom 0.2s;
+}
+.animal{
+  position:absolute;
+  bottom:60px;
+  width:50px;
+  height:50px;
+  font-size:40px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  transition:left 0.2s;
+}
+.problem-box{
+  margin-top:12px;
+  padding:12px;
+  background:#fff;
+  border-radius:10px;
+  box-shadow:0 4px 12px rgba(0,0,0,0.1);
+  width:100%;
+  max-width:400px;
+  text-align:center;
+}
+.choices{
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:center;
+  gap:8px;
+  margin-top:8px;
+}
+.choice{
+  background:#fff;
+  border:2px solid #ccc;
+  border-radius:8px;
+  padding:8px 12px;
+  font-weight:700;
+  min-width:60px;
+}
+.choice.correct{border-color:#2e7d32;}
+.choice.wrong{border-color:#c62828;opacity:.7;}
+.collection{
+  margin-top:16px;
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  justify-content:center;
+}
+.col-item{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  font-size:24px;
+}
+.score-board{
+  margin-top:12px;
+  font-weight:700;
+  position:relative;
+}
+.level-display{
+  margin-top:8px;
+  font-weight:bold;
+  color:#2e7d32;
+}
+.floating-score{
+  position:absolute;
+  color:#2e7d32;
+  font-weight:bold;
+  font-size:18px;
+  animation:floatUp 1s forwards;
+}
+@keyframes floatUp{
+  0%{transform:translateY(0);opacity:1;}
+  100%{transform:translateY(-50px);opacity:0;}
+}
+.confetti{
+  position:absolute;
+  width:6px;height:6px;
+  animation:confettiFall 1s linear forwards;
+}
+@keyframes confettiFall{
+  0%{transform:translateY(0) rotate(0deg);}
+  100%{transform:translateY(80px) rotate(360deg);}
+}
+.level-up{
+  position:absolute;
+  top:120px;
+  left:50%;
+  transform:translateX(-50%);
+  font-size:48px;
+  color:#ff5722;
+  font-weight:bold;
+  text-shadow:2px 2px #000;
+  animation:fadeUp 2s forwards;
+}
+@keyframes fadeUp{
+  0%{opacity:0;transform:translate(-50%,20px);}
+  50%{opacity:1;transform:translate(-50%,-20px);}
+  100%{opacity:0;transform:translate(-50%,-60px);}
+}
+</style>
+</head>
+<body>
+<h1>Safari Capture Progressive</h1>
+<div class="game-container">
+  <div class="scene" id="scene">
+    <div class="ground" id="ground"></div>
+    <div class="jeep" id="jeep">🚙</div>
+  </div>
+
+  <div class="problem-box" id="problemBox" hidden>
+    <div id="problemText">6 × 1 = ?</div>
+    <div class="choices" id="choices"></div>
+  </div>
+
+  <div class="score-board">
+    Score: <span id="score">0</span>
+    <div class="level-display">Level: <span id="level">1</span></div>
+  </div>
+
+  <div class="collection" id="collection"></div>
+</div>
+
+<script>
+const jeep = document.getElementById('jeep');
+const scene = document.getElementById('scene');
+const ground = document.getElementById('ground');
+const problemBox = document.getElementById('problemBox');
+const problemText = document.getElementById('problemText');
+const choicesEl = document.getElementById('choices');
+const scoreEl = document.getElementById('score');
+const collectionEl = document.getElementById('collection');
+const levelEl = document.getElementById('level');
+
+const speciesPool = [
+  {name:'Lion', emoji:'🦁'},
+  {name:'Elephant', emoji:'🐘'},
+  {name:'Monkey', emoji:'🐒'},
+  {name:'Zebra', emoji:'🦓'},
+  {name:'Giraffe', emoji:'🦒'},
+  {name:'Tiger', emoji:'🐅'},
+  {name:'Hippo', emoji:'🦛'},
+  {name:'Rhino', emoji:'🦏'}
+];
+
+let score = 0;
+let collection = {};
+let animals = [];
+let animalIndex = 0;
+let currentStep = 1;
+let currentAnimal = null;
+let jeepX = 50;
+let sceneScroll = 0;
+let level = 1;
+let speed = 2;
+let levelTables = [[1,4],[5,8],[9,12]];
+
+function spawnAnimals(){
+  animals.forEach(a=>a.el.remove());
+  animals = [];
+  animalIndex = 0;
+  const tableRange = levelTables[level-1];
+  const positions = [];
+  while(positions.length<5){
+    const pos = Math.floor(Math.random()*1500)+500;
+    if(!positions.includes(pos)) positions.push(pos);
+  }
+  for(let i=0;i<5;i++){
+    const species = speciesPool[Math.floor(Math.random()*speciesPool.length)];
+    const multiplier = Math.floor(Math.random()*(tableRange[1]-tableRange[0]+1))+tableRange[0];
+    const animal = document.createElement('div');
+    animal.className='animal';
+    animal.style.left=positions[i]+'px';
+    animal.textContent=species.emoji;
+    animal.dataset.name=species.name;
+    animal.dataset.multiplier=multiplier;
+    scene.appendChild(animal);
+    animals.push({el:animal,...species, multiplier, x:positions[i]});
+  }
+}
+
+function renderChoices(correct){
+  const choices = new Set([correct]);
+  while(choices.size<4){
+    let candidate = correct + Math.floor(Math.random()*10)-5;
+    if(candidate<0) candidate=correct+3;
+    choices.add(candidate);
+  }
+  const arr = Array.from(choices);
+  arr.sort(()=>Math.random()-0.5);
+  choicesEl.innerHTML='';
+  arr.forEach(val=>{
+    const btn = document.createElement('button');
+    btn.className='choice';
+    btn.textContent=val;
+    btn.onclick=()=>handleChoice(btn,val);
+    choicesEl.appendChild(btn);
+  });
+}
+
+function showProblem(){
+  problemBox.hidden=false;
+  problemText.textContent=`${currentAnimal.multiplier} × ${currentStep} = ?`;
+  renderChoices(currentAnimal.multiplier*currentStep);
+}
+
+function handleChoice(btn,val){
+  const correct = currentAnimal.multiplier*currentStep;
+  if(val===correct){
+    btn.classList.add('correct');
+    currentStep++;
+    score+=5;
+    scoreEl.textContent=score;
+    spawnFloatingScore(jeepX,50,5);
+    jeepJump();
+    if(currentStep>12){
+      captureAnimal();
+    } else {
+      setTimeout(showProblem,300);
+    }
+  } else {
+    btn.classList.add('wrong');
+    score=Math.max(0,score-2);
+    scoreEl.textContent=score;
+  }
+}
+
+function jeepJump(){
+  jeep.style.bottom='80px';
+  setTimeout(()=>{jeep.style.bottom='60px';},200);
+}
+
+function spawnFloatingScore(x,y,points){
+  const span = document.createElement('span');
+  span.className='floating-score';
+  span.style.left=x+'px';
+  span.style.bottom=y+'px';
+  span.textContent='+'+points;
+  document.body.appendChild(span);
+  setTimeout(()=>span.remove(),1000);
+}
+
+function spawnConfetti(){
+  for(let i=0;i<15;i++){
+    const conf = document.createElement('div');
+    conf.className='confetti';
+    conf.style.left=(jeepX+50)+'px';
+    conf.style.bottom='100px';
+    conf.style.background=['#f00','#0f0','#00f','#ff0','#f0f'][Math.floor(Math.random()*5)];
+    scene.appendChild(conf);
+    setTimeout(()=>conf.remove(),1000);
+  }
+}
+
+function captureAnimal(){
+  problemBox.hidden=true;
+  spawnConfetti();
+  currentAnimal.el.remove();
+  collection[currentAnimal.name]=(collection[currentAnimal.name]||0)+1;
+  updateCollectionUI(currentAnimal);
+  animalIndex++;
+  currentAnimal=null;
+  if(animalIndex>=animals.length){
+    levelUp();
+  }
+}
+
+function updateCollectionUI(animal){
+  collectionEl.innerHTML='';
+  for(const key in collection){
+    const div=document.createElement('div');
+    div.className='col-item';
+    const species = animals.find(a=>a.name===key);
+    div.textContent=`${species?species.emoji:'🐾'} × ${collection[key]}`;
+    collectionEl.appendChild(div);
+  }
+}
+
+function checkEncounter(){
+  if(animalIndex>=animals.length) return;
+  const a=animals[animalIndex];
+  const jeepRight=jeepX+60;
+  if(jeepRight>=a.x-sceneScroll){
+    jeepX-=2;
+    if(!currentAnimal){
+      currentAnimal=a;
+      currentStep=1;
+      showProblem();
+    }
+  }
+}
+
+function animate(){
+  if(!currentAnimal){
+    jeepX+=speed;
+    sceneScroll+=speed;
+  }
+  jeep.style.left=jeepX+'px';
+  ground.style.left=-sceneScroll+'px';
+  animals.forEach(a=>{
+    a.el.style.left=(a.x-sceneScroll)+'px';
+  });
+  checkEncounter();
+  requestAnimationFrame(animate);
+}
+
+function levelUp(){
+  if(level<3){
+    level++;
+    speed++;
+    levelEl.textContent=level;
+    const lvlMsg=document.createElement('div');
+    lvlMsg.className='level-up';
+    lvlMsg.textContent='Level Up!';
+    scene.appendChild(lvlMsg);
+    setTimeout(()=>lvlMsg.remove(),2000);
+    spawnAnimals();
+  } else {
+    alert('Congratulations! You completed all levels!');
+    // Restart
+    level=1; speed=2; score=0; scoreEl.textContent=score; levelEl.textContent=level; collection={}; collectionEl.innerHTML='';
+    spawnAnimals();
+    jeepX=50; sceneScroll=0;
+  }
+}
+
+document.addEventListener('keydown', e=>{
+  const val=parseInt(e.key);
+  if(currentAnimal && val>=1 && val<=9){
+    const btns=Array.from(choicesEl.children);
+    const match=btns.find(b=>parseInt(b.textContent)===val);
+    if(match) match.click();
+  }
+});
+
+spawnAnimals();
+animate();
+</script>
+</body>
+</html>
