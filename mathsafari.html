@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Safari Capture Progressive</title>
+<title>Safari Capture Progressive with Sound</title>
 <style>
 :root{
   --bg:#d0f0c0;
@@ -147,7 +147,12 @@ h1,h2{margin:12px;text-align:center;}
 </style>
 </head>
 <body>
-<h1>Safari Capture Progressive</h1>
+<h1>Safari Capture Progressive with Sound</h1>
+
+<!-- Audio Elements -->
+<audio id="correctSound" src="https://freesound.org/data/previews/522/522320_4063886-lq.mp3"></audio>
+<audio id="wrongSound" src="https://freesound.org/data/previews/109/109662_945474-lq.mp3"></audio>
+
 <div class="game-container">
   <div class="scene" id="scene">
     <div class="ground" id="ground"></div>
@@ -177,6 +182,8 @@ const choicesEl = document.getElementById('choices');
 const scoreEl = document.getElementById('score');
 const collectionEl = document.getElementById('collection');
 const levelEl = document.getElementById('level');
+const correctSound = document.getElementById('correctSound');
+const wrongSound = document.getElementById('wrongSound');
 
 const speciesPool = [
   {name:'Lion', emoji:'🦁'},
@@ -254,6 +261,8 @@ function handleChoice(btn,val){
   const correct = currentAnimal.multiplier*currentStep;
   if(val===correct){
     btn.classList.add('correct');
+    correctSound.currentTime=0;
+    correctSound.play();
     currentStep++;
     score+=5;
     scoreEl.textContent=score;
@@ -266,6 +275,8 @@ function handleChoice(btn,val){
     }
   } else {
     btn.classList.add('wrong');
+    wrongSound.currentTime=0;
+    wrongSound.play();
     score=Math.max(0,score-2);
     scoreEl.textContent=score;
   }
@@ -328,59 +339,4 @@ function checkEncounter(){
   const jeepRight=jeepX+60;
   if(jeepRight>=a.x-sceneScroll){
     jeepX-=2;
-    if(!currentAnimal){
-      currentAnimal=a;
-      currentStep=1;
-      showProblem();
-    }
-  }
-}
-
-function animate(){
-  if(!currentAnimal){
-    jeepX+=speed;
-    sceneScroll+=speed;
-  }
-  jeep.style.left=jeepX+'px';
-  ground.style.left=-sceneScroll+'px';
-  animals.forEach(a=>{
-    a.el.style.left=(a.x-sceneScroll)+'px';
-  });
-  checkEncounter();
-  requestAnimationFrame(animate);
-}
-
-function levelUp(){
-  if(level<3){
-    level++;
-    speed++;
-    levelEl.textContent=level;
-    const lvlMsg=document.createElement('div');
-    lvlMsg.className='level-up';
-    lvlMsg.textContent='Level Up!';
-    scene.appendChild(lvlMsg);
-    setTimeout(()=>lvlMsg.remove(),2000);
-    spawnAnimals();
-  } else {
-    alert('Congratulations! You completed all levels!');
-    // Restart
-    level=1; speed=2; score=0; scoreEl.textContent=score; levelEl.textContent=level; collection={}; collectionEl.innerHTML='';
-    spawnAnimals();
-    jeepX=50; sceneScroll=0;
-  }
-}
-
-document.addEventListener('keydown', e=>{
-  const val=parseInt(e.key);
-  if(currentAnimal && val>=1 && val<=9){
-    const btns=Array.from(choicesEl.children);
-    const match=btns.find(b=>parseInt(b.textContent)===val);
-    if(match) match.click();
-  }
-});
-
-spawnAnimals();
-animate();
-</script>
-</body>
-</html>
+    if(!currentAnimal
