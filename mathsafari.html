@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Safari Capture Progressive with Sound</title>
+<title>Safari Capture Progressive</title>
 <style>
 :root{
   --bg:#d0f0c0;
@@ -13,7 +13,7 @@
   font-family:"Trebuchet MS",sans-serif;
 }
 body,html{margin:0;padding:0;overflow-x:hidden;background:var(--bg);}
-h1{margin:12px;text-align:center;}
+h1{display:none;} /* hidden header */
 .game-container{display:flex;flex-direction:column;align-items:center;}
 .scene{
   position:relative;
@@ -147,11 +147,11 @@ h1{margin:12px;text-align:center;}
 </style>
 </head>
 <body>
-<h1>Safari Capture Progressive</h1>
 
 <!-- Audio Elements -->
 <audio id="correctSound" src="https://freesound.org/data/previews/522/522320_4063886-lq.mp3"></audio>
 <audio id="wrongSound" src="https://freesound.org/data/previews/109/109662_945474-lq.mp3"></audio>
+<audio id="bgMusic" src="https://freesound.org/data/previews/522/522327_4063886-lq.mp3" loop></audio>
 
 <div class="game-container">
   <div class="scene" id="scene">
@@ -184,6 +184,26 @@ const collectionEl = document.getElementById('collection');
 const levelEl = document.getElementById('level');
 const correctSound = document.getElementById('correctSound');
 const wrongSound = document.getElementById('wrongSound');
+const bgMusic = document.getElementById('bgMusic');
+
+let audioUnlocked = false;
+function unlockAudio() {
+    if (!audioUnlocked) {
+        // Unlock correct/wrong sounds
+        correctSound.play().catch(()=>{});
+        correctSound.pause();
+        correctSound.currentTime = 0;
+        wrongSound.play().catch(()=>{});
+        wrongSound.pause();
+        wrongSound.currentTime = 0;
+        // Start background music
+        bgMusic.volume = 0.2;
+        bgMusic.play().catch(()=>{});
+        audioUnlocked = true;
+    }
+}
+document.addEventListener('keydown', unlockAudio, { once: true });
+document.addEventListener('click', unlockAudio, { once: true });
 
 const speciesPool = [
   {name:'Lion', emoji:'🦁'},
@@ -374,7 +394,6 @@ function levelUp(){
     spawnAnimals();
   } else {
     alert('Congratulations! You completed all levels!');
-    // Restart
     level=1; speed=2; score=0; scoreEl.textContent=score; levelEl.textContent=level; collection={}; collectionEl.innerHTML='';
     spawnAnimals();
     jeepX=50; sceneScroll=0;
